@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ScreenGuard – Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <!-- ✅ Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:   #00d4b4;
+      --indigo: #5c6ef8;
+      --coral:  #ff6b6b;
+      --bg:     #0b0f1e;
+      --card:   #131929;
+      --border: rgba(255,255,255,0.08);
+      --text:   #e8eaf6;
+      --muted:  #8892b0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Animated mesh background */
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(92,110,248,0.22) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 80% 70%, rgba(0,212,180,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 50% 10%, rgba(255,107,107,0.12) 0%, transparent 60%),
+        var(--bg);
+      animation: meshMove 12s ease-in-out infinite alternate;
+    }
+    @keyframes meshMove {
+      0%   { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(30deg); }
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: fixed; border-radius: 50%; filter: blur(70px); pointer-events: none; z-index: 0;
+      animation: orbFloat 8s ease-in-out infinite alternate;
+    }
+    .orb1 { width: 400px; height: 400px; top: -100px; left: -100px; background: rgba(92,110,248,0.15); animation-delay: 0s; }
+    .orb2 { width: 300px; height: 300px; bottom: -80px; right: -80px; background: rgba(0,212,180,0.12); animation-delay: 3s; }
+    .orb3 { width: 200px; height: 200px; top: 50%; left: 60%; background: rgba(255,107,107,0.08); animation-delay: 6s; }
+    @keyframes orbFloat {
+      0%   { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(30px, 20px) scale(1.1); }
+    }
+
+    .wrapper {
+      position: relative; z-index: 1;
+      display: flex; gap: 0;
+      width: min(900px, 96vw);
+      min-height: 560px;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px var(--border);
+      animation: slideUp 0.7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Left panel */
+    .panel-left {
+      flex: 1;
+      background: linear-gradient(135deg, #1a1f3c 0%, #0f1629 100%);
+      padding: 56px 48px;
+      display: flex; flex-direction: column; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .panel-left::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%235c6ef8' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
+    .brand-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--teal), var(--indigo));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; box-shadow: 0 8px 20px rgba(0,212,180,0.3);
+    }
+    .brand-name { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .panel-left h1 {
+      font-family: 'Syne', sans-serif; font-size: clamp(28px, 4vw, 38px);
+      font-weight: 800; line-height: 1.15; margin-bottom: 16px;
+    }
+    .panel-left h1 span { 
+      background: linear-gradient(90deg, var(--teal), var(--indigo));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .panel-left p { color: var(--muted); line-height: 1.6; font-size: 15px; margin-bottom: 36px; }
+
+    .features { display: flex; flex-direction: column; gap: 14px; }
+    .feat { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
+    .feat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .feat-dot.teal   { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+    .feat-dot.indigo { background: var(--indigo); box-shadow: 0 0 8px var(--indigo); }
+    .feat-dot.coral  { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
+
+    /* Right panel – form */
+    .panel-right {
+      width: 380px; flex-shrink: 0;
+      background: var(--card);
+      padding: 48px 40px;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .panel-right h2 {
+      font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .panel-right .sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 4px; margin-bottom: 28px; }
+    .tab-btn {
+      flex: 1; padding: 8px; border: none; background: none; color: var(--muted);
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      border-radius: 7px; cursor: pointer; transition: all 0.25s;
+    }
+    .tab-btn.active { background: var(--indigo); color: #fff; box-shadow: 0 4px 12px rgba(92,110,248,0.35); }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 7px; font-weight: 500; }
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 100%; padding: 12px 16px; border-radius: 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      outline: none; transition: border 0.2s, box-shadow 0.2s;
+    }
+    input:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(92,110,248,0.15); }
+
+    .btn-primary {
+      width: 100%; padding: 13px; border: none; border-radius: 10px;
+      background: linear-gradient(135deg, var(--indigo), #7c8cf8);
+      color: #fff; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 6px 20px rgba(92,110,248,0.35);
+      margin-top: 4px;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(92,110,248,0.45); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--muted); font-size: 12px; }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background: var(--border); }
+
+    .social-btns { display: flex; flex-direction: column; gap: 10px; }
+    .btn-social {
+      width: 100%; padding: 11px 16px; border-radius: 10px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-social:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
+    .btn-social svg { flex-shrink: 0; }
+
+    .forgot { text-align: right; margin-top: -8px; margin-bottom: 18px; }
+    .forgot a { color: var(--indigo); font-size: 13px; text-decoration: none; }
+    .forgot a:hover { text-decoration: underline; }
+
+    .footer-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 18px; }
+    .footer-note a { color: var(--teal); text-decoration: none; }
+
+    /* Notification toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: linear-gradient(135deg, #1e2540, #252d48);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 22px; display: flex; align-items: center; gap: 10px;
+      font-size: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+      transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+      z-index: 999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast-icon { font-size: 18px; }
+
+    @media (max-width: 700px) {
+      .panel-left { display: none; }
+      .panel-right { width: 100%; padding: 40px 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+
+  <div class="wrapper">
+    <!-- Left brand panel -->
+    <div class="panel-left">
+      <div class="brand">
+        <div class="brand-icon">⏱</div>
+        <div class="brand-name">ScreenGuard</div>
+      </div>
+      <h1>Take Control of Your <span>Screen Time</span></h1>
+      <p>Monitor usage, set smart limits, and build healthier digital habits with powerful analytics.</p>
+      <div class="features">
+        <div class="feat"><div class="feat-dot teal"></div> Real-time app usage tracking</div>
+        <div class="feat"><div class="feat-dot indigo"></div> Custom time limits per app</div>
+        <div class="feat"><div class="feat-dot coral"></div> Weekly stats & insights</div>
+        <div class="feat"><div class="feat-dot teal"></div> Instant over-limit alerts</div>
+      </div>
+    </div>
+
+    <!-- Right form panel -->
+    <div class="panel-right">
+      <h2>Welcome Back</h2>
+      <p class="sub">Sign in to your ScreenGuard account</p>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('login',this)">Sign In</button>
+        <button class="tab-btn" onclick="switchTab('register',this)">Register</button>
+      </div>
+
+      <!-- Sign In -->
+      <div class="tab-pane active" id="tab-login">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPass" placeholder="••••••••" />
+        </div>
+        <div class="forgot"><a href="#">Forgot password?</a></div>
+        <button class="btn-primary" onclick="handleLogin()">Sign In →</button>
+        <div class="divider">or continue with</div>
+        <div class="social-btns">
+          <!-- ✅ Real Google Sign-In button rendered by Google SDK -->
+          <div id="googleSignInBtn" style="display:flex;justify-content:center;margin-bottom:4px"></div>
+          <button class="btn-social" onclick="socialLogin('Apple')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Continue with Apple
+          </button>
+        </div>
+      </div>
+
+      <!-- Register -->
+      <div class="tab-pane" id="tab-register">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="regName" placeholder="Your Name" />
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="regEmail" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="regPass" placeholder="Min 8 characters" />
+        </div>
+        <button class="btn-primary" onclick="handleRegister()">Create Account →</button>
+        <div class="divider">or sign up with</div>
+        <div class="social-btns">
+          <button class="btn-social" onclick="socialLogin('Google')">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Sign up with Google
+          </button>
+          <button class="btn-social" onclick="socialLogin('Apple')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Sign up with Apple
+          </button>
+        </div>
+      </div>
+
+      <p class="footer-note">By continuing, you agree to our <a href="#">Terms</a> & <a href="#">Privacy</a></p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">✅</span>
+    <span id="toastMsg">Logged in successfully!</span>
+  </div>
+
+  <script>
+    // ── ✅ PASTE YOUR GOOGLE CLIENT ID HERE ──────────────────────────────────
+    const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+    // ────────────────────────────────────────────────────────────────────────
+
+    // Initialise Google Sign-In once the SDK is ready
+    window.addEventListener('load', () => {
+      if (typeof google === 'undefined') return; // SDK not loaded yet
+
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      // Render the official Google button inside our container
+      google.accounts.id.renderButton(
+        document.getElementById('googleSignInBtn'),
+        {
+          theme: 'filled_black',   // matches dark UI
+          size: 'large',
+          shape: 'rectangular',
+          width: 300,
+          text: 'continue_with',
+          logo_alignment: 'left',
+        }
+      );
+    });
+
+    // Called by Google SDK after successful sign-in
+    function handleGoogleResponse(response) {
+      // Decode the JWT credential to get user info
+      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      const name  = payload.name  || 'User';
+      const email = payload.email || '';
+      const pic   = payload.picture || '';
+
+      // Store basic profile for use across app
+      localStorage.setItem('sg_user', JSON.stringify({ name, email, pic, provider: 'google' }));
+
+      showToast(`Welcome, ${name.split(' ')[0]}! Redirecting…`, '🎉');
+      setTimeout(() => window.location.href = 'dashboard.html', 1500);
+    }
+
+    function switchTab(tab, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    function showToast(msg, icon = '✅') {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      document.getElementById('toastIcon').textContent = icon;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const pass  = document.getElementById('loginPass').value;
+      if (!email || !pass) { showToast('Please fill in all fields', '⚠️'); return; }
+      if (email === 'admin@screenguard.com' && pass === 'admin123') {
+        showToast('Welcome, Admin! Redirecting…', '👑');
+        localStorage.setItem('sg_user', JSON.stringify({ name:'Admin', email, provider:'admin' }));
+        setTimeout(() => window.location.href = 'dashboard.html', 1500);
+        return;
+      }
+      showToast('Welcome back! Redirecting…', '✅');
+      localStorage.setItem('sg_user', JSON.stringify({ name: email.split('@')[0], email, provider:'email' }));
+      setTimeout(() => window.location.href = 'dashboard.html', 1500);
+    }
+
+    function handleRegister() {
+      const name  = document.getElementById('regName').value;
+      const email = document.getElementById('regEmail').value;
+      const pass  = document.getElementById('regPass').value;
+      if (!name || !email || !pass) { showToast('Please fill all fields', '⚠️'); return; }
+      if (pass.length < 8) { showToast('Password must be 8+ characters', '⚠️'); return; }
+      localStorage.setItem('sg_user', JSON.stringify({ name, email, provider:'email' }));
+      showToast('Account created! Redirecting…', '🎉');
+      setTimeout(() => window.location.href = 'dashboard.html', 1500);
+    }
+
+    function socialLogin(provider) {
+      // Apple is still simulated — real Apple OAuth needs a paid Apple Developer account
+      showToast(`Apple Sign-In coming soon`, '⬛');
+    }
+  </script>
+</body>
+</html>
